@@ -22,6 +22,7 @@ import os
 import re
 from google.appengine.ext import ndb
 from google.appengine.ext.webapp.mail_handlers import InboundMailHandler
+from google.appengine.api import mail
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)), 
                                        extensions=['jinja2.ext.autoescape'],
@@ -32,6 +33,7 @@ class Cornellian(ndb.Model):
     first_name = ndb.StringProperty(required = True)
     last_name  = ndb.StringProperty(required = True)
     email_address = ndb.StringProperty(required = True)
+    subscribed    = ndb.BooleanProperty(default = True)
 
 class Orientation(ndb.Model):
     leader = ndb.StructuredProperty(Cornellian, required = True)
@@ -43,6 +45,7 @@ class MainHandler(webapp2.RequestHandler):
         self.response.out.write(JINJA_ENVIRONMENT.get_template("index.html").render())
 
 class ViewOrientation(webapp2.RequestHandler):
+    #Gets followers in an orientation and the leader, and outputs the data to the template data.
     def get(self):
         try:
             leader_id = self.request.get("leader_id")
@@ -71,47 +74,62 @@ class ViewOrientation(webapp2.RequestHandler):
             self.response.out.write(JINJA_ENVIRONMENT.get_template("view_orientation_error.html").render())
 
 class LogSenderHandler(InboundMailHandler):
+    #Receives message sent to the server, takes any email addresses found within the content of the email, and creates 
     def receive(self, mail_message):
         message = mail_message.bodies('text/plain')
         for content_type, body in message:
             decoded_message = body.decode().splitlines()
-            froms = []
+            email_addresses = []
             for line in decoded_message:
                 if line[0:5] == "From:" or line[0:3] == "To:":
-                    froms.append(line)
+                    email_addresses.append(line)
 
-            people = []
+            new_people = []
             old_people = []
-            for person in froms:
-                splitperson = person.split()[1:]
-                email_address = splitperson[2][1:-1]
-                if email_address == "":
-                    continue
+            for email in email_addresses:
+                splitperson = email.split()[1:] #Removes the "From:" or "To:"
+                email_address = splitperson[2][1:-1] #Converts "<email@cornell.edu>" to "email@cornell.edu"
 
-                cornellian = Cornellian.query(Cornellian.email_address == email_address).get()
-                if not cornellian:
+                cornellian = Cornellian.query(Cornellian.email_address == email_address).get() 
+                if not cornellian: #If cornellian is not in DB, then add them.
                     newperson = Cornellian()
                     newperson.first_name = splitperson[0]
                     newperson.last_name = splitperson[1]
                     newperson.email_address = email_address
 
-                    people.append(newperson)
-                else:
+                    new_people.append(newperson)
+                else: #Otherwise, add them to the old people field. This has to be an OL, since by the nature of the application's design, all entities are added exactly once.
                     old_people.append(cornellian)
 
-            ndb.put_multi(people)
+            ndb.put_multi(new_people)
 
-            people = old_people + people
+            people = old_people + new_people
+            leader   = people[0]
+            follower = people[1]
 
-            orientation = Orientation.query(Orientation.leader.email_address == people[0].email_address).get()
+            orientation = Orientation.query(Orientation.leader.email_address == leader.email_address).get()
             if not orientation:
                 orientation = Orientation()
-                orientation.leader = people[0]
+                orientation.leader = leader
                 orientation.followers = []
 
-            orientation.followers.append(people[1])
+            orientation.followers.append(follower)
             orientation.put()
 
+            #Send email notification
+            for cornellian in orientation.followers:
+                if cornellian.subscribed == None:
+                    cornellian.subscribed = True
+                if cornellian.subscribed == True:
+                    mail.send_mail(sender = "ta335@cornell.edu",
+                    to=email,
+                    subject="Notification: new classmate in Orientation group",
+                    body="""Hi there,
+{0} {1} ({2}) just joined your orientation group. Check the full list out <a href = "http://cornell-ol.appspot.com/view/orientation?leader_id={3}">here</a>!
+
+If you would like to unsubscribe from these notifications, just let Tanishq know at ta335@cornell.edu.
+                    """.format(follower.first_name, follower.last_name, follower.email_address, leader.email_address))
+            
 app = webapp2.WSGIApplication([
     ('/', MainHandler),
     ('/view/orientation', ViewOrientation),
