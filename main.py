@@ -81,27 +81,36 @@ class LogSenderHandler(InboundMailHandler):
                     froms.append(line)
 
             people = []
+            old_people = []
             for person in froms:
                 splitperson = person.split()[1:]
                 email_address = splitperson[2][1:-1]
                 if email_address == "":
                     continue
 
-                newperson = Cornellian()
-                newperson.first_name = splitperson[0]
-                newperson.last_name = splitperson[1]
-                newperson.email_address = email_address
+                cornellian = Cornellian.query(Cornellian.email_address == email_address).get()
+                if not cornellian:
+                    newperson = Cornellian()
+                    newperson.first_name = splitperson[0]
+                    newperson.last_name = splitperson[1]
+                    newperson.email_address = email_address
 
-                people.append(newperson)
+                    people.append(newperson)
+                else:
+                    old_people.append(cornellian)
 
             ndb.put_multi(people)
 
-            orientation = Orientation.query(Orientation.leader.email_address == people[0].email_address).fetch()
-            if orientation == [] or orientation == None:
+            people = old_people + people
+
+            orientation = Orientation.query(Orientation.leader.email_address == people[0].email_address).get()
+            if not orientation:
                 orientation = Orientation()
                 orientation.leader = people[0]
-                orientation.followers.append(people[1])
-                orientation.put()
+                orientation.followers = []
+
+            orientation.followers.append(people[1])
+            orientation.put()
 
 app = webapp2.WSGIApplication([
     ('/', MainHandler),
