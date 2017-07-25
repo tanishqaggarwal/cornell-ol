@@ -25,8 +25,7 @@
       <br><br>
       <h1 class="header center">Find Your Orientation Mates!</h1>
       <div class="row center">
-        <h5 class="header col s12 light">Enter in your OL's Cornell email address:</h5>
-        <input type = "text" placeholder = "Type an email, like ta335@cornell.edu" id = "leader_id">
+        <input type = "text" placeholder = "Type your OL's email address, i.e. ta335@cornell.edu" id = "leader_id">
       </div>
       <div class="row center">
         <a id="search_class" class="btn-large waves-effect waves-light red">Go</a>
@@ -52,7 +51,7 @@
   <script type = "text/javascript">
   $(document).ready(function() {
     $("#search_class").click(function() {
-      window.location.replace("/view/orientation/?leader_id=" + $("#leader_id").val());
+      window.location.replace("/view/orientation?leader_id=" + $("#leader_id").val());
     });
   })
   </script>

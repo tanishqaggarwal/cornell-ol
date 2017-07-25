@@ -6,7 +6,7 @@ threadsafe: yes
 
 handlers:
 - url: /_ah/mail/.+
-  script: handle_incoming_email.app
+  script: main.app
   login: admin
   
 - url: /.*
