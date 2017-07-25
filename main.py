@@ -44,30 +44,31 @@ class MainHandler(webapp2.RequestHandler):
 
 class ViewOrientation(webapp2.RequestHandler):
     def get(self):
-        leader_id = self.request.get("leader_id")
-        orientation = Orientation.query(Orientation.leader.email_address == leader_id).get()
-        if not orientation:
-            raise Exception()
-        else:
-            leader_info = {
-                "first_name" : orientation.leader.first_name,
-                "last_name" : orientation.leader.last_name,
-                "email_address" : orientation.leader.email_address,
-            }
-            members = [follower.email_address for follower in orientation.followers]
-            orientation_members = []
-            if members:
-                cornellians = Cornellian.query(Cornellian.email_address.IN(members)).fetch()
-                for cornellian in cornellians:
-                    orientation_members.append({
-                        "first_name"    : cornellian.first_name,
-                        "last_name"     : cornellian.last_name,
-                        "email_address" : cornellian.email_address,
-                    })
-            self.response.out.write(JINJA_ENVIRONMENT.get_template("view_orientation.html").render({"leader_info" : leader_info, "orientation_members" : orientation_members}))
-        # except Exception as e:
-        #     logging.error(e)
-        #     self.response.out.write(JINJA_ENVIRONMENT.get_template("view_orientation_error.html").render())
+        try:
+            leader_id = self.request.get("leader_id")
+            orientation = Orientation.query(Orientation.leader.email_address == leader_id).get()
+            if not orientation:
+                raise Exception()
+            else:
+                leader_info = {
+                    "first_name" : orientation.leader.first_name,
+                    "last_name" : orientation.leader.last_name,
+                    "email_address" : orientation.leader.email_address,
+                }
+                members = [follower.email_address for follower in orientation.followers]
+                orientation_members = []
+                if members:
+                    cornellians = Cornellian.query(Cornellian.email_address.IN(members)).fetch()
+                    for cornellian in cornellians:
+                        orientation_members.append({
+                            "first_name"    : cornellian.first_name,
+                            "last_name"     : cornellian.last_name,
+                            "email_address" : cornellian.email_address,
+                        })
+                self.response.out.write(JINJA_ENVIRONMENT.get_template("view_orientation.html").render({"leader_info" : leader_info, "orientation_members" : orientation_members}))
+        except Exception as e:
+            logging.error(e)
+            self.response.out.write(JINJA_ENVIRONMENT.get_template("view_orientation_error.html").render())
 
 class LogSenderHandler(InboundMailHandler):
     def receive(self, mail_message):
