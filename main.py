@@ -121,8 +121,8 @@ class LogSenderHandler(InboundMailHandler):
                 if cornellian.subscribed == None:
                     cornellian.subscribed = True
                 if cornellian.subscribed == True:
-                    mail.send_mail(sender = "ta335@cornell.edu",
-                    to=email,
+                    mail.send_mail(sender = "tanishq.aggarwal.11@gmail.com",
+                    to=cornellian.email_address,
                     subject="Notification: new classmate in Orientation group",
                     body="""Hi there,
 {0} {1} ({2}) just joined your orientation group. Check the full list out <a href = "http://cornell-ol.appspot.com/view/orientation?leader_id={3}">here</a>!
